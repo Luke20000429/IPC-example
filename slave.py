@@ -24,6 +24,7 @@ def main(r, w):
     fmat = np.frombuffer(buf, dtype='float32').reshape(128, 4)
     print("[Python] Convert bytes to array\n", fmat)
     flot = fmat + 10
+    print("[Python] Add 10 to the matrix")
     shm.write(flot.tobytes())
     print("[Python] waiting for 3s...")
     time.sleep(3) # do some process

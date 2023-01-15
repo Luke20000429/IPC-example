@@ -102,7 +102,7 @@ int main(int argc, char **argv) {
     char writemessage[20] = "Ready";
     char readmessage[20];
 
-    arma::fmat mat1((float*) addr, 128, 4, false, false); // create mat on shared memory
+    arma::fmat mat1((float*) addr, 128, 4, false, false); // NOTE: create mat on shared memory
     mat1.fill(12);
 
     if (create_dualpipe(pipefds1, pipefds2)) {
@@ -119,7 +119,6 @@ int main(int argc, char **argv) {
     auto pt = new thread(python_thread, ss.str());
 
     this_thread::sleep_for(1s);
-    // strcpy(addr, "Shared memory test\n"); // write to shared memory
     
     ssize_t wbytes = write(pipefds1[1], writemessage, sizeof(writemessage));
     printf("In Parent: Writing to pipe 1 - Message is \"%s\", length: %zu\n", writemessage, wbytes);
@@ -128,7 +127,7 @@ int main(int argc, char **argv) {
     printf("In Parent: Reading from pipe 2 - Message is \"%s\", length: %zu\n", readmessage, rbytes);
 
     pt->join();
-    cout << mat1;
+    cout << "Matrix processed by python program:\n" << mat1;
     delete_shm(addr, shmid);
     close(pipefds1[0]); // Close the unwanted pipe1 read side
     close(pipefds2[1]); // Close the unwanted pipe2 write side
