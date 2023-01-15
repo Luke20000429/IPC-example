@@ -5,6 +5,7 @@ import sysv_ipc as ipc
 import sys
 import os
 import time
+import numpy as np
 
 def main(r, w):
     path = "/tmp"
@@ -18,9 +19,12 @@ def main(r, w):
     readmessage = os.read(r, 20) # read from pipe
     print("[Python] Receive control message from master: ", readmessage.decode())
     
-    buf = shm.read(19) # read 19 bytes from shared memory
-    print("[Python] Data read from shared memory: ", buf)
-    
+    buf = shm.read(128*4*4) # read 128*4 fmat from shared memory
+    # print("[Python] Data read from shared memory: ", buf)
+    fmat = np.frombuffer(buf, dtype='float32').reshape(128, 4)
+    print("[Python] Convert bytes to array\n", fmat)
+    flot = fmat + 10
+    shm.write(flot.tobytes())
     print("[Python] waiting for 3s...")
     time.sleep(3) # do some process
     shm.detach()

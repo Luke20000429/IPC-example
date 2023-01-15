@@ -16,7 +16,7 @@ using namespace std;
 
 #define GETEKYDIR ("/tmp")
 #define PROJECTID  (2333)
-#define SHMSIZE (1024)
+#define SHMSIZE (4096)
 
 void err_exit(const char *buf) {
     fprintf(stderr, "%s\n", buf);
@@ -51,7 +51,6 @@ char *create_shm(int &shmid, size_t __size, const char *__pathname, int __proj_i
             printf("Attach shared memory failed\n");
             printf("remove shared memory identifier successful\n");
         }
-
         err_exit("shmat error");
     }
 
@@ -73,7 +72,7 @@ void delete_shm(char *addr, int shmid) {
 
 int create_dualpipe(int pipefds1[2], int pipefds2[2]) {
     int returnstatus1, returnstatus2;
-    
+
     returnstatus1 = pipe(pipefds1);
     
     if (returnstatus1 == -1) {
@@ -103,6 +102,9 @@ int main(int argc, char **argv) {
     char writemessage[20] = "Ready";
     char readmessage[20];
 
+    arma::fmat mat1((float*) addr, 128, 4, false, false); // create mat on shared memory
+    mat1.fill(12);
+
     if (create_dualpipe(pipefds1, pipefds2)) {
         err_exit("Fail to create pipes");
         close(pipefds1[0]); // Close the unwanted pipe1 read side
@@ -112,21 +114,26 @@ int main(int argc, char **argv) {
     }
 
     // call python script to process
-    // TODO: make it an independent thread
     stringstream ss;
     ss << "python3 slave.py" << " " << pipefds1[0] << " " << pipefds2[1];
     auto pt = new thread(python_thread, ss.str());
 
     this_thread::sleep_for(1s);
-    strcpy(addr, "Shared memory test\n"); // write to shared memory
+    // strcpy(addr, "Shared memory test\n"); // write to shared memory
+    
     ssize_t wbytes = write(pipefds1[1], writemessage, sizeof(writemessage));
     printf("In Parent: Writing to pipe 1 - Message is \"%s\", length: %zu\n", writemessage, wbytes);
     
     ssize_t rbytes = read(pipefds2[0], readmessage, sizeof(readmessage));
     printf("In Parent: Reading from pipe 2 - Message is \"%s\", length: %zu\n", readmessage, rbytes);
-    
-    delete_shm(addr, shmid);
+
     pt->join();
+    cout << mat1;
+    delete_shm(addr, shmid);
+    close(pipefds1[0]); // Close the unwanted pipe1 read side
+    close(pipefds2[1]); // Close the unwanted pipe2 write side
+    close(pipefds1[1]); // Close the unwanted pipe1 write side
+    close(pipefds2[0]); // Close the unwanted pipe2 read side
     
     return 0;
 }
