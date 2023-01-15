@@ -16,12 +16,12 @@ def main(r, w):
     shm.attach(0,0)  
     
     readmessage = os.read(r, 20) # read from pipe
-    print("Receive control message from master: ", readmessage.decode())
+    print("[Python] Receive control message from master: ", readmessage.decode())
     
     buf = shm.read(19) # read 19 bytes from shared memory
-    print("Data read from shared memory: ", buf)
+    print("[Python] Data read from shared memory: ", buf)
     
-    print("waiting for 3s...")
+    print("[Python] waiting for 3s...")
     time.sleep(3) # do some process
     shm.detach()
     
@@ -31,6 +31,6 @@ def main(r, w):
 if __name__ == '__main__':
     pipe1 = int(sys.argv[1])
     pipe2 = int(sys.argv[2])
-    print("read from pipe {}, write to pipe {}".format(pipe1, pipe2))
+    print("[Python] read from pipe1: {}, write to pipe2: {}".format(pipe1, pipe2))
     main(pipe1, pipe2)
     

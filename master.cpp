@@ -9,6 +9,9 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <armadillo>
+#include <thread>
+
 using namespace std;
 
 #define GETEKYDIR ("/tmp")
@@ -86,12 +89,18 @@ int create_dualpipe(int pipefds1[2], int pipefds2[2]) {
     return 0;
 }
 
+void python_thread(string arg) {
+    cout << "Run Python program:\n " << arg << "\n";
+    int result = system(arg.c_str());
+    cout << "Python return code: " << result << "\n"; 
+}
+
 int main(int argc, char **argv) {
 
     int shmid;
     char *addr = create_shm(shmid, SHMSIZE, GETEKYDIR, PROJECTID);
     int pipefds1[2], pipefds2[2];
-    char pipe1writemessage[20] = "Ready";
+    char writemessage[20] = "Ready";
     char readmessage[20];
 
     if (create_dualpipe(pipefds1, pipefds2)) {
@@ -102,22 +111,22 @@ int main(int argc, char **argv) {
         close(pipefds2[0]); // Close the unwanted pipe2 write side
     }
 
-    strcpy(addr, "Shared memory test\n"); // write to shared memory
-    printf("In Parent: Writing to pipe 1 - Message is %s\n", pipe1writemessage);
-    write(pipefds1[1], pipe1writemessage, sizeof(pipe1writemessage));
-
     // call python script to process
     // TODO: make it an independent thread
     stringstream ss;
     ss << "python3 slave.py" << " " << pipefds1[0] << " " << pipefds2[1];
-    cout << ss.str() << endl;
-    int result = system(ss.str().c_str());
+    auto pt = new thread(python_thread, ss.str());
 
-    read(pipefds2[0], readmessage, sizeof(readmessage));
-    printf("In Parent: Reading from pipe 2 - Message is %s\n", readmessage);
-    cout << "Python return code: " << result << "\n"; 
-
+    this_thread::sleep_for(1s);
+    strcpy(addr, "Shared memory test\n"); // write to shared memory
+    ssize_t wbytes = write(pipefds1[1], writemessage, sizeof(writemessage));
+    printf("In Parent: Writing to pipe 1 - Message is \"%s\", length: %zu\n", writemessage, wbytes);
+    
+    ssize_t rbytes = read(pipefds2[0], readmessage, sizeof(readmessage));
+    printf("In Parent: Reading from pipe 2 - Message is \"%s\", length: %zu\n", readmessage, rbytes);
+    
     delete_shm(addr, shmid);
+    pt->join();
     
     return 0;
 }
