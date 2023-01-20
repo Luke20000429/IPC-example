@@ -19,10 +19,10 @@ def main(r, w):
     readmessage = os.read(r, 20) # read from pipe
     print("[Python] Receive control message from master: ", readmessage.decode())
     
-    buf = shm.read(128*4*4) # read 128*4 fmat from shared memory
+    buf = shm.read(3000*4*4) # read 128*4 fmat from shared memory
     # print("[Python] Data read from shared memory: ", buf)
-    fmat = np.frombuffer(buf, dtype='float32').reshape(128, 4)
-    print("[Python] Convert bytes to array\n", fmat)
+    fmat = np.frombuffer(buf, dtype='float32').reshape(3000, 4)
+    # print("[Python] Convert bytes to array\n", fmat)
     flot = fmat + 10
     print("[Python] Add 10 to the matrix")
     shm.write(flot.tobytes())

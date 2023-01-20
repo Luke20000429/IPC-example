@@ -11,12 +11,16 @@
 #include <fstream>
 #include <armadillo>
 #include <thread>
+#include <chrono>
 
 using namespace std;
 
 #define GETEKYDIR ("/tmp")
 #define PROJECTID  (2333)
-#define SHMSIZE (4096)
+#define SHMSIZE (1024000)
+
+#define CurrTimeMS (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count())
+#define CurrTimeNS (std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count())
 
 void err_exit(const char *buf) {
     fprintf(stderr, "%s\n", buf);
@@ -102,7 +106,9 @@ int main(int argc, char **argv) {
     char writemessage[20] = "Ready";
     char readmessage[20];
 
-    arma::fmat mat1((float*) addr, 128, 4, false, false); // NOTE: create mat on shared memory
+    auto t1 = CurrTimeMS;
+
+    arma::fmat mat1((float*) addr, 3000, 4, false, false); // NOTE: create mat on shared memory
     mat1.fill(12);
 
     if (create_dualpipe(pipefds1, pipefds2)) {
@@ -127,12 +133,16 @@ int main(int argc, char **argv) {
     printf("In Parent: Reading from pipe 2 - Message is \"%s\", length: %zu\n", readmessage, rbytes);
 
     pt->join();
-    cout << "Matrix processed by python program:\n" << mat1;
+    // cout << "Matrix processed by python program:\n" << mat1;
     delete_shm(addr, shmid);
     close(pipefds1[0]); // Close the unwanted pipe1 read side
     close(pipefds2[1]); // Close the unwanted pipe2 write side
     close(pipefds1[1]); // Close the unwanted pipe1 write side
     close(pipefds2[0]); // Close the unwanted pipe2 read side
+
+    auto t2 = CurrTimeMS;
+
+    cout << "Time spent = " << t2 - t1 << " ms.\n";
     
     return 0;
 }
