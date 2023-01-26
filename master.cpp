@@ -26,7 +26,7 @@ using namespace std;
 
 int main(int argc, char **argv) {
 
-    arma::fmat mat1(3000, 4);
+    arma::fmat mat1(12000, 4);
     mat1.fill(12);
 
     auto t1 = CurrTimeMS;
