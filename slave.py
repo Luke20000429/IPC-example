@@ -31,8 +31,8 @@ def main(r, w):
         flot = fmat + 10
         print("[Python] Add 10 to the matrix")
         shm.write(flot.tobytes())
-        print("[Python] waiting for 3s...")
-        time.sleep(3) # do some process
+        print("[Python] waiting for 1s...")
+        time.sleep(1) # do some process
         os.write(w, b"Done")
           
     shm.detach()

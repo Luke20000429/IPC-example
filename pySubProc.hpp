@@ -49,7 +49,7 @@ public:
 
 inline pySubProc::pySubProc(size_t max_shm_size=100000, const char *__pathname="/tmp", int __proj_id=2333) : 
     GETEKYDIR(__pathname), PROJECTID(__proj_id), SHMSIZE(max_shm_size) {
-    std::cout << "Create shared memory on " << GETEKYDIR << PROJECTID << " of size " << SHMSIZE << "Bytes.\n";
+    std::cout << "Create shared memory on " << GETEKYDIR << PROJECTID << " of size " << SHMSIZE << " Bytes.\n";
     addr = create_shm(shmid, SHMSIZE, GETEKYDIR, PROJECTID);
 
     if (create_dualpipe()) {
@@ -101,6 +101,8 @@ inline int pySubProc::Launch(char *data, size_t size) {
     
     ssize_t rbytes = read(pipefds2[0], readmessage, sizeof(readmessage)); // this call will block 
     printf("In Parent: Reading from pipe 2 - Message is \"%s\", length: %zu\n", readmessage, rbytes);
+
+    std::memcpy(data, addr, size); // copy data to shared memory
 
     return 0;
 }

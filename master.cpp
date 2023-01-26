@@ -33,6 +33,11 @@ int main(int argc, char **argv) {
 
     pySubProc flot(SHMSIZE, GETEKYDIR, PROJECTID);
     flot.Launch((char *) mat1.memptr(), mat1.size() * sizeof(float));
+    cout << mat1(0, 0) << endl;
+    flot.Launch((char *) mat1.memptr(), mat1.size() * sizeof(float));
+    cout << mat1(0, 0) << endl;
+    flot.Launch((char *) mat1.memptr(), mat1.size() * sizeof(float));
+    cout << mat1(0, 0) << endl;
 
     auto t2 = CurrTimeMS;
 
