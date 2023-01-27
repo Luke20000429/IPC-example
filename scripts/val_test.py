@@ -98,7 +98,7 @@ def eval_model(scene_flow, testloader):
         # NOTE: begin
         # Send data to GPU
         batch = batch.to(device, non_blocking=True)
-        print("batch shape", len(batch["sequence"]))
+        print("batch shape", type(batch))
 
         # Estimate flow
         with torch.no_grad():

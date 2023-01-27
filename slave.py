@@ -80,7 +80,8 @@ def EstFlow(model, input_buffer, n_bytes):
         est_flow = model(tbuf[0], tbuf[1])
         print("time: ", time.time() - start_t)
         
-    return est_flow.to("cpu")
+    return est_flow.cpu().numpy()
+    # return tbuf[0].cpu().numpy()
 
 def AddTen(model, input_buffer, n_bytes):
     pcd_size = int(n_bytes / 4 / 4) # only for float number 
@@ -100,5 +101,6 @@ if __name__ == '__main__':
     wrap = Wrapper(pipe1, pipe2, model)
 
     print("[Python] read from pipe1: {}, write to pipe2: {}".format(pipe1, pipe2))
-    wrap(AddTen)
+    # wrap(AddTen)
+    wrap(EstFlow)
     
