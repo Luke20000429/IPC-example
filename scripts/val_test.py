@@ -98,11 +98,10 @@ def eval_model(scene_flow, testloader):
         # NOTE: begin
         # Send data to GPU
         batch = batch.to(device, non_blocking=True)
-        print("batch shape", type(batch))
 
         # Estimate flow
         with torch.no_grad():
-            print("ptcl shape", batch["sequence"][0].shape)
+            print("ptcl shape", batch["sequence"][0].shape) # (batch_size, pcd_size after downsample, coordinates in (1, 2, 0))
             start_t = time.time()
             est_flow = scene_flow(batch["sequence"][0], batch["sequence"][1])
             print("time: ", time.time() - start_t)
@@ -221,7 +220,7 @@ def my_main(dataset_name, max_points, path2ckpt, test=False):
     # Dataloader
     testloader = DataLoader(
         dataset,
-        batch_size=2,
+        batch_size=4,
         pin_memory=True,
         shuffle=True,
         num_workers=6,

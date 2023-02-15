@@ -12,6 +12,7 @@ import torch
 import argparse
 from tqdm import tqdm
 from flot.models.scene_flow import FLOT
+from flot.datasets.kitti_flownet3d import Kitti
 
 class Wrapper:
     
@@ -43,7 +44,7 @@ class Wrapper:
             # print("[Python] Data read from shared memory: ", buf)
             obuf = _func(self.model, ibuf, data_size) # call user defined function
             self.shm.write(obuf.tobytes())
-            print("[Python] waiting for 1s...")
+            # print("[Python] waiting for 1s...")
             # time.sleep(1) # do some process
             os.write(self.w, b"Done")
         
@@ -63,12 +64,38 @@ def loadModel(path2ckpt):
     scene_flow = scene_flow.eval()
     return scene_flow
 
+def subsample(buffer, nb_points=2048):
+    # frame_size is number of points per frame
+    # pcd per frame is normally equal to n_bytes/size_of_float/3
+    # nb point is 2048 by default
+    # NOTE: assume pcd size in each frame is the same
+    sequence = np.frombuffer(buffer, dtype='float32').reshape(2, -1)[:, (1, 2, 0)]
+    # the original data set might store data as (z, x, y), thus reorder may not necessary for us 
+    # assert(sequence.shape[1] == frame_size)
+    # Restrict to 35m
+    # NOTE: is 35m the height?
+    loc = sequence[0][:, 2] < 35
+    sequence[0] = sequence[0][loc]
+    loc = sequence[1][:, 2] < 35
+    sequence[1] = sequence[1][loc]
+    # Choose points in first scan
+    ind1 = np.random.permutation(sequence[0].shape[0])[:nb_points]
+    sequence[0] = sequence[0][ind1]
+    # Choose point in second scan
+    ind2 = np.random.permutation(sequence[1].shape[0])[:nb_points]
+    sequence[1] = sequence[1][ind2]
+    # NOTE: why are we using different indices
+    sequence = [torch.unsqueeze(torch.from_numpy(s), 0).float() for s in sequence]
+    return sequence
+
 def EstFlow(model, input_buffer, n_bytes):
     # NOTE: begin
     # Send data to GPU
     _device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-     # sample shape 2x(2, 2048, 3)
-    tbuf = torch.frombuffer(input_buffer, dtype=torch.float32).reshape(2, 2, -1, 3) # ignore the warning as it is read-only
+    # sample shape # 2 x (batch_size, pcd_size after downsample, coordinates in (1, 2, 0))
+    # normally 2 x (1, 2048, 3) can be (2, 4096, 3)
+    # tbuf = torch.frombuffer(input_buffer, dtype=torch.float32).reshape(2, 1, 2048, 3) # ignore the warning as it is read-only
+    tbuf = subsample(input_buffer)
     tbuf = tbuf.to(_device, non_blocking=True)
     
     print("Total bytes:", n_bytes, " tbuf shape:", tbuf.shape)
@@ -101,6 +128,6 @@ if __name__ == '__main__':
     wrap = Wrapper(pipe1, pipe2, model)
 
     print("[Python] read from pipe1: {}, write to pipe2: {}".format(pipe1, pipe2))
-    # wrap(AddTen)
-    wrap(EstFlow)
+    wrap(AddTen)
+    # wrap(EstFlow)
     
