@@ -19,10 +19,11 @@ class Wrapper:
     path = "/tmp"
     projID = 2333
     
-    def __init__(self, _r: int, _w: int, _model):
+    def __init__(self, _r: int, _w: int, _pid: int, _model):
         self.r = _r
         self.w = _w
         self.model = _model
+        self.projID = _pid
         
         self.key = ipc.ftok(self.path, self.projID, silence_warning=True)
         self.shm = ipc.SharedMemory(self.key, 0, 0)
@@ -69,24 +70,26 @@ def subsample(buffer, nb_points=2048):
     # pcd per frame is normally equal to n_bytes/size_of_float/3
     # nb point is 2048 by default
     # NOTE: assume pcd size in each frame is the same
-    sequence = np.frombuffer(buffer, dtype='float32').reshape(2, -1)[:, (1, 2, 0)]
+    sequence = np.frombuffer(buffer, dtype='float32').reshape(2, -1, 3)[:, :, (1, 2, 0)]
     # the original data set might store data as (z, x, y), thus reorder may not necessary for us 
     # assert(sequence.shape[1] == frame_size)
     # Restrict to 35m
     # NOTE: is 35m the height?
+    print(sequence.shape)
+    subseqs = []
     loc = sequence[0][:, 2] < 35
-    sequence[0] = sequence[0][loc]
+    subseqs.append(sequence[0][loc])
     loc = sequence[1][:, 2] < 35
-    sequence[1] = sequence[1][loc]
+    subseqs.append(sequence[1][loc])
     # Choose points in first scan
-    ind1 = np.random.permutation(sequence[0].shape[0])[:nb_points]
-    sequence[0] = sequence[0][ind1]
+    ind1 = np.random.permutation(subseqs[0].shape[0])[:nb_points]
+    subseqs[0] = subseqs[0][ind1]
     # Choose point in second scan
-    ind2 = np.random.permutation(sequence[1].shape[0])[:nb_points]
-    sequence[1] = sequence[1][ind2]
+    ind2 = np.random.permutation(subseqs[1].shape[0])[:nb_points]
+    subseqs[1] = subseqs[1][ind2]
     # NOTE: why are we using different indices
-    sequence = [torch.unsqueeze(torch.from_numpy(s), 0).float() for s in sequence]
-    return sequence
+    subseqs = [torch.unsqueeze(torch.from_numpy(s), 0).float() for s in subseqs]
+    return subseqs
 
 def EstFlow(model, input_buffer, n_bytes):
     # NOTE: begin
@@ -96,9 +99,10 @@ def EstFlow(model, input_buffer, n_bytes):
     # normally 2 x (1, 2048, 3) can be (2, 4096, 3)
     # tbuf = torch.frombuffer(input_buffer, dtype=torch.float32).reshape(2, 1, 2048, 3) # ignore the warning as it is read-only
     tbuf = subsample(input_buffer)
-    tbuf = tbuf.to(_device, non_blocking=True)
+    tbuf[0] = tbuf[0].to(_device, non_blocking=True)
+    tbuf[1] = tbuf[1].to(_device, non_blocking=True)
     
-    print("Total bytes:", n_bytes, " tbuf shape:", tbuf.shape)
+    print("Total bytes:", n_bytes, " tbuf[0] shape:", tbuf[0].shape)
 
     # Estimate flow
     with torch.no_grad():
@@ -111,23 +115,26 @@ def EstFlow(model, input_buffer, n_bytes):
     # return tbuf[0].cpu().numpy()
 
 def AddTen(model, input_buffer, n_bytes):
-    pcd_size = int(n_bytes / 4 / 4) # only for float number 
-    # mat = np.frombuffer(input_buffer, dtype='float32').copy().reshape(pcd_size, 4)
+    pcd_size = int(n_bytes / 4 / 3) # only for float number 
+    # mat = np.frombuffer(input_buffer, dtype='float32').copy().reshape(pcd_size, 3)
     _device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-    tbuf = torch.frombuffer(input_buffer, dtype=torch.float32).reshape(pcd_size, 4) # ignore the warning as it is read-only
+    tbuf = torch.frombuffer(input_buffer, dtype=torch.float32).reshape(pcd_size, 3) # ignore the warning as it is read-only
     tbuf = tbuf.to(_device, non_blocking=True)
-    print("[Python] Add 10 to the matrix")
+    print("[Python] Add 10 to the matrix of shape {}".format(tbuf.shape))
     # return mat + 10   
-    return (tbuf+10).cpu().numpy() 
+    tbuf[0] += 10
+    tbuf[1] += 20
+    return tbuf.cpu().numpy() 
 
 if __name__ == '__main__':
     pipe1 = int(sys.argv[1])
     pipe2 = int(sys.argv[2])
+    pid = int(sys.argv[3])
     model = loadModel("./pretrained_models/model_2048.tar")
     
-    wrap = Wrapper(pipe1, pipe2, model)
+    wrap = Wrapper(pipe1, pipe2, pid, model)
 
-    print("[Python] read from pipe1: {}, write to pipe2: {}".format(pipe1, pipe2))
-    wrap(AddTen)
-    # wrap(EstFlow)
+    print("[Python] read from pipe{}, write to pipe{}".format(pipe1, pipe2))
+    # wrap(AddTen)
+    wrap(EstFlow)
     

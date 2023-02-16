@@ -61,7 +61,7 @@ inline pySubProc::pySubProc(size_t max_shm_size=100000, const char *__pathname="
     }
 
     std::stringstream ss;
-    ss << "python3 slave.py" << " " << pipefds1[0] << " " << pipefds2[1];
+    ss << "python3 slave.py" << " " << pipefds1[0] << " " << pipefds2[1] << " " << PROJECTID;
     pt = new std::thread(python_thread, ss.str());
 
     busy = false;
@@ -110,7 +110,7 @@ inline int pySubProc::Launch(char *data, size_t size) {
 inline char * pySubProc::create_shm(int &shmid, size_t __size, const char *__pathname, int __proj_id) {
     key_t key = ftok(__pathname, __proj_id);
     if ( key < 0 )
-        err_exit("ftok error");
+        err_exit("ftok error, try another project id");
 
     shmid = shmget(key, __size, IPC_CREAT | IPC_EXCL | 0664);
     if ( shmid == -1 ) {
