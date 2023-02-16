@@ -109,8 +109,9 @@ inline int pySubProc::Launch(char *data, size_t size) {
 
 inline char * pySubProc::create_shm(int &shmid, size_t __size, const char *__pathname, int __proj_id) {
     key_t key = ftok(__pathname, __proj_id);
-    if ( key < 0 )
-        err_exit("ftok error, try another project id");
+    std::cout << "Gen Key: " << key << std::endl; 
+    // if ( key < 0 ) 
+    //     err_exit("ftok error, try another project id");
 
     shmid = shmget(key, __size, IPC_CREAT | IPC_EXCL | 0664);
     if ( shmid == -1 ) {
